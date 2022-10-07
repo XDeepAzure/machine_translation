@@ -8,10 +8,11 @@
 '''
 import collections
 import math
+from typing import Tuple
 
 import torch
 
-from src.dataset import truncate_pad
+from dataset import truncate_pad
 
 
 def predict(net, src_sentence, src_voacb, tgt_vocab, num_steps, device,

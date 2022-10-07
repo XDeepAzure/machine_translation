@@ -14,7 +14,7 @@ import torch
 from d2l import torch as d2l
 from torch.utils.data import Dataset
 
-from src.vocab import Vocab
+from vocab import Vocab
 
 d2l.DATA_HUB['fra-eng'] = (d2l.DATA_URL + 'fra-eng.zip',
                            '94646ad1522d915e7b0f9296181140edcf86a4f5')
@@ -37,7 +37,7 @@ def read_data_nmt():
 # print(raw_text[:75])
 
 def preprocess_nmt(text:str):
-    def no_space(char, prev_char):
+    def no_space(char, prev_char):              #判断单词与标点之间有无空格
         return char in set(',.!?') and prev_char != ' '
 
     # 使用空格替换不间断空格 \u202f与\xa0
@@ -51,7 +51,7 @@ def preprocess_nmt(text:str):
 def tokenize_nmt(text:str, num_examples=None):
     source, target = [], []
     for i, line in enumerate(text.split('\n')):
-        if num_examples and i>num_examples:
+        if num_examples and i > num_examples:
             break
         parts = line.split('\t')
         if len(parts) == 2:

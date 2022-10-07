@@ -26,6 +26,14 @@ class Decoder(nn.Module):
     def forward(self, X, state=None):
         raise NotImplementedError
 
+class AttentionDecoder(Decoder):
+    def __init__(self, **kwargs):
+        super(AttentionDecoder, self).__init__(**kwargs)
+    
+    @property
+    def attention_weights(self):
+        raise NotImplementedError
+
 class EncoderDecoder(nn.Module):
     def __init__(self, encoder, decoder, **kwargs):
         super(EncoderDecoder, self).__init__(**kwargs)

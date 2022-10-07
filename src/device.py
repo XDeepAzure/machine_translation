@@ -26,4 +26,6 @@ def try_all_gpus():
     return devices if devices else [torch.device('cpu')]
 
 if __name__ == '__main__':
+    c = try_all_gpus()
+    print(c)
     pass

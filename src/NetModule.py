@@ -9,7 +9,8 @@
 import torch
 from torch import nn
 
-from EncoderDecoder import Encoder, Decoder
+from d2l import torch as d2l
+from EncoderDecoder import AttentionDecoder, Encoder, Decoder
 
 class Seq2SeqEncoder(Encoder):
     def __init__(self, vocab_size, embed_size, num_hiddens, num_layers,
@@ -67,6 +68,54 @@ class Seq2SeqDecoder(Decoder):
         # output的形状:(batch_size,num_steps,vocab_size) 不用展开吗？
         # state[0]的形状:(num_layers,batch_size,num_hiddens)
         return output, state
+
+class Seq2SeqAttentionDecoder(AttentionDecoder):
+    def __init__(self, vocab_size, embed_size, num_hiddens, num_layers,
+                 dropout=0, **kwargs):
+        super(AttentionDecoder, self).__init__(**kwargs)
+        #编码器最终的输出在每一个时间步都作为解码器的输入序列的一部分 即上下文
+        #自己编写的加性attention
+        self.attention = d2l.AdditiveAttention(num_hiddens, num_hiddens, num_hiddens, dropout)
+
+        self.embedding = nn.Embedding(vocab_size, embed_size)
+        #编码器的最后一步的隐状态用来初始化解码器的隐状态
+        self.rnn = nn.GRU(embed_size + num_hiddens, num_hiddens, num_layers,
+                          dropout=dropout)
+        self.linear = nn.Linear(num_hiddens, vocab_size)
+
+    def init_state(self, enc_outputs, enc_valid_lens, *args):
+        '''
+        用encoder的输出作为隐状态， encoder输出的就是最浓缩的信息
+        :param enc_outputs: encoder的输出，包括(outputs, state)
+        :param args:
+        :return:
+        '''
+        outputs, hidden_state = enc_outputs
+        #output.shape=(num_steps,batch_size,num_hiddens)
+        return (outputs.permute(1, 0, 2), hidden_state, enc_valid_lens )
+
+    def forward(self, X, state=None):
+        #虽然state给的是None但是实际上此处的state不可能是None
+        enc_outputs, hidden_state, enc_valid_lens = state
+        X = self.embedding(X).permute(1, 0, 2)
+        outputs, self._attention_weights = [], []
+        for x in X:         #X的第一个token是<bos>
+            query = torch.unsqueeze(hidden_state[-1], dim=1)    #上个时刻rnn最后的输出
+            #enc_outputs.shape = (nums_step, batch_size, wordembed_size)
+            context = self.attention(query, enc_outputs, enc_outputs, enc_valid_lens)
+            #x.shape=(batch_size,embed_size+context)
+            x = torch.cat((context, torch.unsqueeze(x, dim=1)), dim=-1)
+            out, hidden_state = self.rnn(x.permute(1, 0, 2), hidden_state)
+            outputs.append(out)
+            self._attention_weights.append(self.attention_weights)
+            pass
+        outputs = self.linear(torch.cat(outputs, dim=0))
+        return outputs.permute(1, 0, 2), [enc_outputs, hidden_state, enc_valid_lens]
+    @property
+    def attention_weights(self):    #给画图用的
+        return self._attention_weights
+
+
 def sequence_mask(X, valid_len, value=0):
     '''
     暂时不清楚咋实现的，考虑自己写这个算法
